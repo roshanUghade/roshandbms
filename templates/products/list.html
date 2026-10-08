@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Products Catalog | Product Management System{% endblock %}
+{% block header_title %}Product Catalog & Inventory{% endblock %}
+
+{% block content %}
+<!-- Filter & Action Card -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('product_list') }}" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" name="search" class="form-control" placeholder="Search by name, SKU..." value="{{ search }}">
+                </div>
+            </div>
+
+            <div class="col-md-2">
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    {% for c in categories %}
+                    <option value="{{ c.category_id }}" {% if selected_category == c.category_id|string %}selected{% endif %}>
+                        {{ c.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="supplier" class="form-select">
+                    <option value="">All Suppliers</option>
+                    {% for s in suppliers %}
+                    <option value="{{ s.supplier_id }}" {% if selected_supplier == s.supplier_id|string %}selected{% endif %}>
+                        {{ s.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="status" class="form-select">
+                    <option value="">All Stock Status</option>
+                    <option value="IN_STOCK" {% if selected_status == 'IN_STOCK' %}selected{% endif %}>In Stock</option>
+                    <option value="LOW_STOCK" {% if selected_status == 'LOW_STOCK' %}selected{% endif %}>Low Stock Alert</option>
+                    <option value="OUT_OF_STOCK" {% if selected_status == 'OUT_OF_STOCK' %}selected{% endif %}>Out of Stock</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="sort" class="form-select">
+                    <option value="name_asc" {% if selected_sort == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="name_desc" {% if selected_sort == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                    <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                    <option value="stock_asc" {% if selected_sort == 'stock_asc' %}selected{% endif %}>Stock: Lowest First</option>
+                    <option value="stock_desc" {% if selected_sort == 'stock_desc' %}selected{% endif %}>Stock: Highest First</option>
+                </select>
+            </div>
+
+            <div class="col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-primary w-100" title="Apply Filter">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+                <a href="{{ url_for('product_list') }}" class="btn btn-outline-secondary" title="Reset Filters">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Product Table Card -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <span class="fw-bold"><i class="fa-solid fa-boxes-stacked text-primary me-2"></i> Products ({{ products | length }} items found)</span>
+            <small class="text-muted ms-2">Powered by SQL View: <code>v_product_catalog</code></small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('product_export_csv') }}" class="btn btn-sm btn-outline-success">
+                <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+            </a>
+            <a href="{{ url_for('product_create') }}" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-plus me-1"></i> Add Product
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>SKU & Name</th>
+                    <th>Category</th>
+                    <th>Supplier</th>
+                    <th class="text-end">Unit Price</th>
+                    <th class="text-end">Cost</th>
+                    <th class="text-center">Margin</th>
+                    <th class="text-center">Stock</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('product_detail', product_id=p.product_id) }}" class="fw-semibold text-decoration-none">
+                            {{ p.product_name }}
+                        </a>
+                        <div class="text-muted font-monospace small">{{ p.sku }}</div>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">{{ p.category_name }}</span></td>
+                    <td><small class="text-muted">{{ p.supplier_name }}</small></td>
+                    <td class="text-end fw-bold text-slate-800">{{ p.unit_price | currency }}</td>
+                    <td class="text-end text-muted small">{{ p.cost_price | currency }}</td>
+                    <td class="text-center">
+                        <span class="badge bg-success-subtle text-success small">{{ p.profit_margin_pct }}%</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="fw-bold">{{ p.stock_quantity }} <small class="text-muted">{{ p.unit_measure }}</small></div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Min: {{ p.reorder_level }}</small>
+                    </td>
+                    <td class="text-center">
+                        {% if p.stock_status == 'IN_STOCK' %}
+                            <span class="badge badge-in-stock"><i class="fa-solid fa-check me-1"></i> In Stock</span>
+                        {% elif p.stock_status == 'LOW_STOCK' %}
+                            <span class="badge badge-low-stock"><i class="fa-solid fa-triangle-exclamation me-1"></i> Low Stock</span>
+                        {% else %}
+                            <span class="badge badge-out-of-stock"><i class="fa-solid fa-circle-xmark me-1"></i> Out of Stock</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('product_detail', product_id=p.product_id) }}" class="btn btn-outline-secondary" title="View Details">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('product_edit', product_id=p.product_id) }}" class="btn btn-outline-primary" title="Edit">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#delModal{{ p.product_id }}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+
+                        <!-- Delete Modal -->
+                        <div class="modal fade text-start" id="delModal{{ p.product_id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h6 class="modal-title"><i class="fa-solid fa-trash me-2"></i> Delete Product?</h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Are you sure you want to delete <strong>{{ p.product_name }}</strong> (<code>{{ p.sku }}</code>)?</p>
+                                        <p class="text-muted small mb-0"><strong>DBMS Constraint:</strong> If this product is referenced in existing customer orders, the Foreign Key <code>ON DELETE RESTRICT</code> will prevent deletion to preserve referential integrity.</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form action="{{ url_for('product_delete', product_id=p.product_id) }}" method="POST">
+                                            <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="fa-solid fa-box-open fs-2 mb-2 d-block text-secondary"></i>
+                        No products match your criteria. Try adjusting the search filters.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

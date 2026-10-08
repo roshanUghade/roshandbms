@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers Directory | DBMS Project{% endblock %}
+{% block header_title %}Suppliers &amp; Vendor Management{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Suppliers Table -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold"><i class="fa-solid fa-truck text-primary me-2"></i> Registered Suppliers ({{ suppliers | length }})</span>
+                    <small class="text-muted ms-2">Analytics from SQL View: <code>v_supplier_performance</code></small>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Supplier Name</th>
+                            <th>Contact Person</th>
+                            <th>Location</th>
+                            <th class="text-center">Products</th>
+                            <th class="text-center">Total Stock</th>
+                            <th class="text-end">Capital Tied</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in suppliers %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ s.supplier_name }}</div>
+                                <div class="text-muted small"><i class="fa-solid fa-phone me-1"></i> {{ s.phone or '-' }}</div>
+                            </td>
+                            <td>
+                                <div>{{ s.contact_name or 'N/A' }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border"><i class="fa-solid fa-location-dot me-1 text-danger"></i> {{ s.city or 'India' }}</span>
+                            </td>
+                            <td class="text-center fw-bold">{{ s.active_products_supplied }}</td>
+                            <td class="text-center text-muted">{{ s.total_units_available }}</td>
+                            <td class="text-end fw-semibold text-primary">{{ s.capital_invested | currency }}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delSupModal{{ s.supplier_id }}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+
+                                <!-- Delete Modal -->
+                                <div class="modal fade text-start" id="delSupModal{{ s.supplier_id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h6 class="modal-title"><i class="fa-solid fa-trash me-2"></i> Delete Supplier?</h6>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Delete supplier <strong>{{ s.supplier_name }}</strong>?</p>
+                                                <div class="alert alert-warning small mb-0">
+                                                    <strong>DBMS Constraint:</strong> If products are sourced from this supplier (Current products: {{ s.active_products_supplied }}), SQLite's Foreign Key <code>ON DELETE RESTRICT</code> will abort this deletion to prevent inconsistent vendor states!
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form action="{{ url_for('supplier_delete', supplier_id=s.supplier_id) }}" method="POST">
+                                                    <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Supplier Form -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header fw-bold">
+                <i class="fa-solid fa-plus-circle text-success me-2"></i> Register New Supplier
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('suppliers_list') }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Company / Supplier Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Apex Global Distributions" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Person</label>
+                        <input type="text" name="contact_name" class="form-control" placeholder="e.g. Mr. Rajesh Sharma">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" name="email" class="form-control" placeholder="e.g. contact@supplier.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Phone Number</label>
+                        <input type="tel" name="phone" class="form-control" placeholder="e.g. +91-9876543210">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">City</label>
+                        <input type="text" name="city" class="form-control" placeholder="e.g. Bengaluru, Pune, Mumbai">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Address Details</label>
+                        <textarea name="address" class="form-control" rows="2" placeholder="Industrial area, warehouse location..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-save me-1"></i> Register Supplier
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

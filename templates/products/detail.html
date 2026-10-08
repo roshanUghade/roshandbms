@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.product_name }} | Product Details{% endblock %}
+{% block header_title %}Product Detail &amp; DBMS Provenance{% endblock %}
+
+{% block content %}
+<!-- Product Header Card -->
+<div class="card mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <h3 class="fw-bold mb-0">{{ product.product_name }}</h3>
+                    <span class="badge bg-light text-dark font-monospace border">{{ product.sku }}</span>
+                    {% if product.stock_status == 'IN_STOCK' %}
+                        <span class="badge badge-in-stock">In Stock</span>
+                    {% elif product.stock_status == 'LOW_STOCK' %}
+                        <span class="badge badge-low-stock">Low Stock</span>
+                    {% else %}
+                        <span class="badge badge-out-of-stock">Out of Stock</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted mb-0">{{ product.description or 'No product description provided.' }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('product_edit', product_id=product.product_id) }}" class="btn btn-primary">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> Edit Product
+                </a>
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="fa-solid fa-trash me-1"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Specs & Financials -->
+    <div class="col-lg-4">
+        <!-- Financial Metrics Card -->
+        <div class="card mb-4">
+            <div class="card-header fw-bold">
+                <i class="fa-solid fa-coins text-warning me-2"></i> Financial &amp; Pricing Metrics
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Retail Selling Price</span>
+                    <span class="fw-bold text-primary fs-5">{{ product.unit_price | currency }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Cost Price (Procurement)</span>
+                    <span class="fw-semibold">{{ product.cost_price | currency }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Unit Gross Profit</span>
+                    <span class="fw-semibold text-success">{{ product.unit_profit | currency }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Profit Margin %</span>
+                    <span class="badge bg-success-subtle text-success fs-6">{{ product.profit_margin_pct }}%</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Inventory Status Card -->
+        <div class="card mb-4">
+            <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-warehouse text-info me-2"></i> Inventory Health</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#stockModal">
+                    <i class="fa-solid fa-arrow-right-arrow-left me-1"></i> Adjust Stock
+                </button>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Units in Stock</span>
+                    <span class="fw-bold fs-5">{{ product.stock_quantity }} {{ product.unit_measure }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Reorder Threshold</span>
+                    <span>{{ product.reorder_level }} {{ product.unit_measure }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Total Stock Retail Value</span>
+                    <span class="fw-semibold text-success">{{ product.inventory_retail_value | currency }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Capital Invested (Cost)</span>
+                    <span class="fw-semibold">{{ product.inventory_cost_value | currency }}</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Relational References -->
+        <div class="card">
+            <div class="card-header fw-bold">
+                <i class="fa-solid fa-network-wired text-secondary me-2"></i> Relational Entities (FKs)
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Category</small>
+                    <div class="fw-semibold">{{ product.category_name }}</div>
+                    <small class="text-secondary">Foreign Key: <code>category_id = {{ product.category_id }}</code></small>
+                </div>
+                <div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Supplier</small>
+                    <div class="fw-semibold">{{ product.supplier_name }}</div>
+                    <small class="text-secondary">Foreign Key: <code>supplier_id = {{ product.supplier_id }}</code></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Tabs (Audit Trail, Transactions, Orders) -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header p-0">
+                <ul class="nav nav-tabs card-header-tabs m-0 border-0" id="detailTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active px-4 py-3 fw-semibold" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit-content">
+                            <i class="fa-solid fa-shield-halved text-primary me-2"></i> DBMS Trigger Audit Trail ({{ audit_logs | length }})
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link px-4 py-3 fw-semibold" id="trx-tab" data-bs-toggle="tab" data-bs-target="#trx-content">
+                            <i class="fa-solid fa-clock-rotate-left text-success me-2"></i> Stock Ledger ({{ transactions | length }})
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link px-4 py-3 fw-semibold" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-content">
+                            <i class="fa-solid fa-receipt text-info me-2"></i> Order History ({{ orders_included | length }})
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="tab-content" id="detailTabsContent">
+                    <!-- Tab 1: Audit Log -->
+                    <div class="tab-pane fade show active" id="audit-content">
+                        <div class="alert alert-info py-2 px-3 small mb-3">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            <strong>DBMS Trigger Governance:</strong> Entries below are inserted automatically by database triggers (<code>trg_product_audit_insert</code> and <code>trg_product_audit_update</code>) upon any table change.
+                        </div>
+
+                        {% if audit_logs %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Audit ID</th>
+                                        <th>Action</th>
+                                        <th>Old State (JSON)</th>
+                                        <th>New State (JSON)</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in audit_logs %}
+                                    <tr>
+                                        <td class="font-monospace text-muted">#{{ log.audit_id }}</td>
+                                        <td>
+                                            {% if log.action_type == 'INSERT' %}
+                                                <span class="badge bg-success-subtle text-success">INSERT</span>
+                                            {% elif log.action_type == 'UPDATE_PRICE' %}
+                                                <span class="badge bg-warning-subtle text-warning">PRICE CHANGE</span>
+                                            {% elif log.action_type == 'UPDATE_STOCK' %}
+                                                <span class="badge bg-info-subtle text-info">STOCK UPDATE</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary-subtle text-secondary">{{ log.action_type }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><code class="small text-break">{{ log.old_values or '-' }}</code></td>
+                                        <td><code class="small text-break text-primary">{{ log.new_values or '-' }}</code></td>
+                                        <td class="text-muted small text-nowrap">{{ log.timestamp | datetime_format }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4">No audit events recorded yet.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab 2: Stock Ledger -->
+                    <div class="tab-pane fade" id="trx-content">
+                        {% if transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Trx ID</th>
+                                        <th>Type</th>
+                                        <th class="text-center">Quantity</th>
+                                        <th class="text-end">Cost / Price</th>
+                                        <th>Note / Reason</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for t in transactions %}
+                                    <tr>
+                                        <td class="font-monospace text-muted">#{{ t.transaction_id }}</td>
+                                        <td>
+                                            {% if t.transaction_type == 'PURCHASE_IN' %}
+                                                <span class="badge bg-success-subtle text-success">PURCHASE_IN</span>
+                                            {% elif t.transaction_type == 'SALE_OUT' %}
+                                                <span class="badge bg-danger-subtle text-danger">SALE_OUT</span>
+                                            {% elif t.transaction_type == 'RETURN_IN' %}
+                                                <span class="badge bg-info-subtle text-info">RETURN_IN</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary-subtle text-secondary">ADJUSTMENT</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center fw-bold">{{ t.quantity }}</td>
+                                        <td class="text-end text-muted">{{ t.unit_cost | currency }}</td>
+                                        <td class="text-muted small">{{ t.reference_note or '-' }}</td>
+                                        <td class="text-muted small text-nowrap">{{ t.created_at | datetime_format }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4">No inventory transactions found for this product.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab 3: Order History -->
+                    <div class="tab-pane fade" id="orders-content">
+                        {% if orders_included %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Customer</th>
+                                        <th>Date</th>
+                                        <th class="text-center">Qty Purchased</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for o in orders_included %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ url_for('order_detail', order_id=o.order_id) }}" class="font-monospace fw-semibold text-decoration-none">
+                                                {{ o.order_number }}
+                                            </a>
+                                        </td>
+                                        <td>{{ o.customer_name }}</td>
+                                        <td class="text-muted small">{{ o.order_date | datetime_format }}</td>
+                                        <td class="text-center fw-bold">{{ o.quantity }}</td>
+                                        <td class="text-end fw-semibold text-success">{{ o.subtotal | currency }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4">This product has not been ordered in any sales orders yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Adjust Stock -->
+<div class="modal fade" id="stockModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-arrow-right-arrow-left me-2 text-primary"></i> Adjust Inventory Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('stock_movement') }}" method="POST">
+                <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                <div class="modal-body">
+                    <p class="mb-3">Product: <strong>{{ product.product_name }}</strong> (Current Stock: <strong>{{ product.stock_quantity }}</strong>)</p>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Movement Action</label>
+                        <select name="action" class="form-select" required>
+                            <option value="IN">Restock / Purchase In (Add to stock)</option>
+                            <option value="OUT">Inventory Deduction / Damaged (Subtract from stock)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Quantity</label>
+                        <input type="number" min="1" name="quantity" class="form-control" placeholder="Number of units" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Reason / Reference Note</label>
+                        <input type="text" name="note" class="form-control" placeholder="e.g. Supplier Restock PO-909 or Damaged in warehouse">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Apply Stock Movement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Delete Product -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-trash me-2"></i> Delete Product</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete <strong>{{ product.product_name }}</strong>?</p>
+                <div class="alert alert-warning small mb-0">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                    <strong>DBMS Referential Integrity:</strong> If this product is linked to any sales orders, SQLite will enforce <code>ON DELETE RESTRICT</code> and reject the deletion.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('product_delete', product_id=product.product_id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

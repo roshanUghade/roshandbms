@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if product %}Edit Product - {{ product.name }}{% else %}Add New Product{% endif %} | DBMS Project
+{% endblock %}
+
+{% block header_title %}
+    {% if product %}Edit Product: {{ product.name }}{% else %}Add New Product to Database{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="fa-solid {% if product %}fa-pen-to-square text-primary{% else %}fa-plus-circle text-success{% endif %} me-2"></i>
+                    {% if product %}Update Product Attributes{% else %}Product Specification &amp; DBMS Constraints Form{% endif %}
+                </span>
+                <a href="{{ url_for('product_list') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Back to Catalog
+                </a>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST" action="{% if product %}{{ url_for('product_edit', product_id=product.product_id) }}{% else %}{{ url_for('product_create') }}{% endif %}">
+                    <!-- Basic Information -->
+                    <h6 class="text-primary fw-bold text-uppercase border-bottom pb-2 mb-3" style="font-size: 0.8rem; letter-spacing: 0.05em;">
+                        1. Product Identification (Unique Key &amp; Relations)
+                    </h6>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">SKU (Stock Keeping Unit) <span class="text-danger">*</span></label>
+                            <input type="text" name="sku" class="form-control font-monospace" placeholder="e.g. PRD-ELEC-005"
+                                   value="{{ product.sku if product else '' }}" {% if product %}readonly{% endif %} required>
+                            <small class="text-muted">DBMS Constraint: <code>UNIQUE NOT NULL</code></small>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Ultra HD 4K Monitor 27-inch"
+                                   value="{{ product.name if product else '' }}" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Category (Foreign Key) <span class="text-danger">*</span></label>
+                            <select name="category_id" class="form-select" required>
+                                <option value="">-- Select Category --</option>
+                                {% for c in categories %}
+                                <option value="{{ c.category_id }}" {% if product and product.category_id == c.category_id %}selected{% endif %}>
+                                    {{ c.name }} ({{ c.category_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">References <code>categories(category_id)</code></small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Supplier (Foreign Key) <span class="text-danger">*</span></label>
+                            <select name="supplier_id" class="form-select" required>
+                                <option value="">-- Select Supplier --</option>
+                                {% for s in suppliers %}
+                                <option value="{{ s.supplier_id }}" {% if product and product.supplier_id == s.supplier_id %}selected{% endif %}>
+                                    {{ s.name }} ({{ s.city }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">References <code>suppliers(supplier_id)</code></small>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Detailed product specifications, warranty, features...">{{ product.description if product else '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Pricing & Inventory Section -->
+                    <h6 class="text-primary fw-bold text-uppercase border-bottom pb-2 mb-3" style="font-size: 0.8rem; letter-spacing: 0.05em;">
+                        2. Pricing &amp; Inventory Quantities (Check Constraints)
+                    </h6>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Selling Price (₹) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" min="0" name="unit_price" class="form-control"
+                                       value="{{ product.unit_price if product else '0.00' }}" required>
+                            </div>
+                            <small class="text-muted">CHECK (<code>unit_price >= 0</code>)</small>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Cost Price (₹) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" min="0" name="cost_price" class="form-control"
+                                       value="{{ product.cost_price if product else '0.00' }}" required>
+                            </div>
+                            <small class="text-muted">CHECK (<code>cost_price >= 0</code>)</small>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Stock Quantity <span class="text-danger">*</span></label>
+                            <input type="number" min="0" name="stock_quantity" class="form-control"
+                                   value="{{ product.stock_quantity if product else '10' }}" required>
+                            <small class="text-muted">Enforced by Trigger &amp; Check</small>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Reorder Alert Level</label>
+                            <input type="number" min="0" name="reorder_level" class="form-control"
+                                   value="{{ product.reorder_level if product else '10' }}" required>
+                            <small class="text-muted">Threshold for alerts view</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Unit of Measure</label>
+                            <select name="unit_measure" class="form-select">
+                                <option value="Piece" {% if product and product.unit_measure == 'Piece' %}selected{% endif %}>Piece</option>
+                                <option value="Box" {% if product and product.unit_measure == 'Box' %}selected{% endif %}>Box</option>
+                                <option value="Set" {% if product and product.unit_measure == 'Set' %}selected{% endif %}>Set</option>
+                                <option value="Kg" {% if product and product.unit_measure == 'Kg' %}selected{% endif %}>Kg</option>
+                                <option value="Liter" {% if product and product.unit_measure == 'Liter' %}selected{% endif %}>Liter</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Product Status</label>
+                            <select name="status" class="form-select">
+                                <option value="Active" {% if product and product.status == 'Active' %}selected{% endif %}>Active (Available for Sale)</option>
+                                <option value="Discontinued" {% if product and product.status == 'Discontinued' %}selected{% endif %}>Discontinued</option>
+                                <option value="Draft" {% if product and product.status == 'Draft' %}selected{% endif %}>Draft</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                        <a href="{{ url_for('product_list') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>
+                            {% if product %}Save Changes (Logs Trigger){% else %}Insert Product Record{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Product Categories | DBMS Project{% endblock %}
+{% block header_title %}Product Categories &amp; Classifications{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Categories Table -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold"><i class="fa-solid fa-tags text-primary me-2"></i> Categories Directory ({{ categories | length }})</span>
+                    <small class="text-muted ms-2">Analytics from SQL View: <code>v_category_analytics</code></small>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Category Name</th>
+                            <th class="text-center">Products</th>
+                            <th class="text-center">Total Stock</th>
+                            <th class="text-end">Inventory Value</th>
+                            <th class="text-end">Avg. Price</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in categories %}
+                        <tr>
+                            <td><span class="badge bg-secondary-subtle text-secondary font-monospace">{{ c.category_code }}</span></td>
+                            <td>
+                                <div class="fw-semibold">{{ c.category_name }}</div>
+                            </td>
+                            <td class="text-center fw-bold">{{ c.total_products }}</td>
+                            <td class="text-center text-muted">{{ c.total_units_in_stock }}</td>
+                            <td class="text-end text-success fw-bold">{{ c.total_retail_value | currency }}</td>
+                            <td class="text-end text-muted">{{ c.avg_product_price | currency }}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delCatModal{{ c.category_id }}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+
+                                <!-- Delete Category Modal -->
+                                <div class="modal fade text-start" id="delCatModal{{ c.category_id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h6 class="modal-title"><i class="fa-solid fa-trash me-2"></i> Delete Category?</h6>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Delete category <strong>{{ c.category_name }}</strong> (<code>{{ c.category_code }}</code>)?</p>
+                                                <div class="alert alert-warning small mb-0">
+                                                    <strong>DBMS Constraint:</strong> If products exist under this category (Current products: {{ c.total_products }}), the Foreign Key <code>ON DELETE RESTRICT</code> will abort this deletion to prevent orphaned product records!
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form action="{{ url_for('category_delete', category_id=c.category_id) }}" method="POST">
+                                                    <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Category Form -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header fw-bold">
+                <i class="fa-solid fa-plus-circle text-success me-2"></i> Add New Category
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('categories_list') }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Category Code <span class="text-danger">*</span></label>
+                        <input type="text" name="category_code" class="form-control text-uppercase font-monospace" placeholder="e.g. NETW, AUDIO" required>
+                        <small class="text-muted">UNIQUE NOT NULL</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Networking & Cables" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Category purpose or scope..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-save me-1"></i> Save Category
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

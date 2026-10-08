@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Product Management System | DBMS Project{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="brand">
+            <i class="fa-solid fa-boxes-stacked text-primary fs-4"></i>
+            <div>
+                <span class="d-block lh-1 text-white">ProductMS</span>
+                <small class="text-secondary" style="font-size: 0.68rem; font-weight: normal;">DBMS Course Project</small>
+            </div>
+        </div>
+
+        <div class="sidebar-section-title">Core Operations</div>
+        <ul class="nav flex-column mb-1">
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('index') }}">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path.startswith('/products') %}active{% endif %}" href="{{ url_for('product_list') }}">
+                    <i class="fa-solid fa-box-archive"></i>
+                    <span>Products Catalog</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/orders/new' %}active{% endif %}" href="{{ url_for('order_create') }}">
+                    <i class="fa-solid fa-cart-plus text-success"></i>
+                    <span>New Order (ACID)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/orders' %}active{% endif %}" href="{{ url_for('order_list') }}">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span>Orders Ledger</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-section-title">Inventory & Stock</div>
+        <ul class="nav flex-column mb-1">
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/inventory/transactions' %}active{% endif %}" href="{{ url_for('inventory_transactions') }}">
+                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                    <span>Stock Movements</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/inventory/reorder' %}active{% endif %}" href="{{ url_for('inventory_reorder') }}">
+                    <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                    <span>Low Stock Alerts</span>
+                    {% if nav_low_stock_count > 0 %}
+                    <span class="badge bg-danger rounded-pill ms-auto">{{ nav_low_stock_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path.startswith('/categories') %}active{% endif %}" href="{{ url_for('categories_list') }}">
+                    <i class="fa-solid fa-tags"></i>
+                    <span>Categories</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path.startswith('/suppliers') %}active{% endif %}" href="{{ url_for('suppliers_list') }}">
+                    <i class="fa-solid fa-truck"></i>
+                    <span>Suppliers</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-section-title">DBMS Special Features</div>
+        <ul class="nav flex-column mb-3">
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/sql-console' %}active{% endif %}" href="{{ url_for('sql_console') }}">
+                    <i class="fa-solid fa-terminal text-info"></i>
+                    <span>SQL Console & Queries</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/er-diagram' %}active{% endif %}" href="{{ url_for('er_diagram') }}">
+                    <i class="fa-solid fa-diagram-project text-warning"></i>
+                    <span>ER Schema Visualizer</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/audit-logs' %}active{% endif %}" href="{{ url_for('audit_logs') }}">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Trigger Audit Trail</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Database Status Footer -->
+        <div class="px-3 py-3 border-top border-secondary border-opacity-25 mt-auto">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <small class="text-secondary"><i class="fa-solid fa-database me-1 text-success"></i> SQLite 3.x</small>
+                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem;">FK: ON</span>
+            </div>
+            <button class="btn btn-sm btn-outline-danger w-100 py-1" style="font-size: 0.78rem;" data-bs-toggle="modal" data-bs-target="#resetDbModal">
+                <i class="fa-solid fa-rotate-left me-1"></i> Reset Sample Data
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+        <!-- Top Navigation Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-0 text-slate-800">{% block header_title %}Product Management System{% endblock %}</h4>
+                <p class="text-muted small mb-0">Relational Database Management System (DBMS) Project</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('product_create') }}" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus me-1"></i> Add Product
+                </a>
+                <a href="{{ url_for('order_create') }}" class="btn btn-sm btn-success">
+                    <i class="fa-solid fa-cart-shopping me-1"></i> Create Order
+                </a>
+            </div>
+        </div>
+
+        <!-- Flash Notification Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                        {% if category == 'success' %}
+                            <i class="fa-solid fa-circle-check me-2"></i>
+                        {% elif category == 'danger' %}
+                            <i class="fa-solid fa-circle-exclamation me-2"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-info me-2"></i>
+                        {% endif %}
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Child Page Body -->
+        {% block content %}{% endblock %}
+
+        <!-- Footer -->
+        <footer class="mt-5 pt-3 border-top text-center text-muted small">
+            <p class="mb-1">
+                <strong>DBMS Project: Product Management System</strong> | Relational Normalization (3NF) &bull; ACID Transactions &bull; SQL Triggers &bull; Analytical Views
+            </p>
+            <p class="text-secondary" style="font-size: 0.75rem;">
+                Built for Database Management Systems Coursework &amp; Viva Examination
+            </p>
+        </footer>
+    </div>
+
+    <!-- Reset Database Confirmation Modal -->
+    <div class="modal fade" id="resetDbModal" tabindex="-1" aria-labelledby="resetDbModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="resetDbModalLabel"><i class="fa-solid fa-triangle-exclamation me-2"></i> Reset Database?</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to reset the database? This will:</p>
+                    <ul>
+                        <li>Drop and re-execute <code>schema.sql</code></li>
+                        <li>Re-create all SQL Triggers from <code>triggers.sql</code></li>
+                        <li>Re-create Analytical Views from <code>views.sql</code></li>
+                        <li>Reload clean demonstration records from <code>seed_data.sql</code></li>
+                    </ul>
+                    <p class="text-danger small mb-0"><strong>Note:</strong> All new products, orders, and edits made during this session will be refreshed.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="{{ url_for('db_reset') }}" method="POST">
+                        <button type="submit" class="btn btn-danger">Yes, Reset Database</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

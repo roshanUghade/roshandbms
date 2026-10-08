@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Orders Ledger | DBMS Project{% endblock %}
+{% block header_title %}Customer Orders &amp; Sales Ledger{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <span class="fw-bold"><i class="fa-solid fa-receipt text-primary me-2"></i> Orders Ledger ({{ orders | length }} orders recorded)</span>
+            <small class="text-muted ms-2">Powered by SQL View: <code>v_sales_orders_summary</code></small>
+        </div>
+        <a href="{{ url_for('order_create') }}" class="btn btn-sm btn-success">
+            <i class="fa-solid fa-cart-plus me-1"></i> Create New Order (ACID)
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Customer Name</th>
+                    <th>Date &amp; Time</th>
+                    <th class="text-center">Line Items</th>
+                    <th class="text-center">Total Units</th>
+                    <th>Status</th>
+                    <th class="text-end">Subtotal</th>
+                    <th class="text-end">GST / Tax</th>
+                    <th class="text-end">Grand Total</th>
+                    <th class="text-center">Invoice</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in orders %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('order_detail', order_id=o.order_id) }}" class="font-monospace fw-bold text-decoration-none">
+                            {{ o.order_number }}
+                        </a>
+                    </td>
+                    <td>
+                        <div class="fw-semibold">{{ o.customer_name }}</div>
+                        <small class="text-muted">{{ o.customer_email }} &bull; {{ o.customer_city }}</small>
+                    </td>
+                    <td class="text-muted small text-nowrap">{{ o.order_date | datetime_format }}</td>
+                    <td class="text-center fw-semibold">{{ o.total_line_items }}</td>
+                    <td class="text-center text-muted">{{ o.total_units_purchased }}</td>
+                    <td>
+                        {% if o.status == 'Completed' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="fa-solid fa-check me-1"></i> Completed
+                            </span>
+                        {% elif o.status == 'Pending' %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                <i class="fa-solid fa-clock me-1"></i> Pending
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                <i class="fa-solid fa-ban me-1"></i> Cancelled
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end text-muted">{{ o.subtotal | currency }}</td>
+                    <td class="text-end text-muted small">{{ o.tax_amount | currency }}</td>
+                    <td class="text-end fw-bold text-primary">{{ o.total_amount | currency }}</td>
+                    <td class="text-center">
+                        <a href="{{ url_for('order_detail', order_id=o.order_id) }}" class="btn btn-sm btn-outline-secondary" title="View Invoice">
+                            <i class="fa-solid fa-file-invoice"></i> View
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-5">
+                        <i class="fa-solid fa-receipt fs-2 mb-2 d-block text-secondary"></i>
+                        No customer orders recorded yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

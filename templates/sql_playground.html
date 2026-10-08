@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Interactive SQL Console | DBMS Project{% endblock %}
+{% block header_title %}Interactive SQL Console &amp; Query Playground{% endblock %}
+
+{% block content %}
+<!-- Top Introduction -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="fa-solid fa-terminal text-info me-2"></i> Live Database Query Executor</h5>
+                <p class="text-muted small mb-0">
+                    Directly execute SQL statements against the active database. Test <strong>Joins, Correlated Subqueries, Window Functions, Aggregate Grouping, and Triggers</strong> in real-time.
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                    <i class="fa-solid fa-bolt me-1"></i> SQLite Engine Active
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Query Editor Column -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-bold"><i class="fa-solid fa-code text-primary me-2"></i> SQL Editor</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearEditor()">Clear</button>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('sql_console') }}" id="sqlForm">
+                    <div class="mb-3">
+                        <textarea name="sql_query" id="sqlQueryInput" class="form-control sql-editor" rows="10" placeholder="Type your SQL query here... e.g. SELECT * FROM v_product_catalog LIMIT 5;">{{ sql_query or '' }}</textarea>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fa-solid fa-keyboard me-1"></i> Press <strong>Run Query</strong> or select a pre-built DBMS query on the right.
+                        </small>
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                            <i class="fa-solid fa-play me-1"></i> Run SQL Query
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pre-built Sample Queries Library -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-bold">
+                <i class="fa-solid fa-book-bookmark text-warning me-2"></i> Educational Queries Library
+            </div>
+            <div class="card-body p-0" style="max-height: 380px; overflow-y: auto;">
+                <div class="list-group list-group-flush">
+                    {% for sq in sample_queries %}
+                    <button type="button" class="list-group-item list-group-item-action p-3" onclick="loadSampleQuery({{ sq.sql | tojson }})">
+                        <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                            <h6 class="mb-0 fw-semibold text-primary" style="font-size: 0.88rem;">{{ sq.title }}</h6>
+                            <i class="fa-solid fa-arrow-turn-down text-muted small"></i>
+                        </div>
+                        <small class="text-secondary font-monospace d-block text-truncate" style="font-size: 0.75rem;">
+                            {{ sq.sql | replace('\n', ' ') }}
+                        </small>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Execution Results Section -->
+{% if result %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <span class="fw-bold">
+                {% if result.success %}
+                    <i class="fa-solid fa-circle-check text-success me-2"></i> Query Execution Succeeded
+                {% else %}
+                    <i class="fa-solid fa-circle-xmark text-danger me-2"></i> Query Execution Error
+                {% endif %}
+            </span>
+            <small class="text-muted ms-2">Latency: <strong>{{ result.execution_time_ms }} ms</strong> &bull; Rows: <strong>{{ result.row_count }}</strong></small>
+        </div>
+        {% if result.success and result.type == 'SELECT' and result.rows %}
+        <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCSV('query_results.csv')">
+            <i class="fa-solid fa-download me-1"></i> Download Results
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="card-body p-0">
+        {% if not result.success %}
+            <!-- Error Alert -->
+            <div class="p-4">
+                <div class="alert alert-danger mb-0 font-monospace">
+                    <strong><i class="fa-solid fa-triangle-exclamation me-2"></i> DBMS Execution Failure:</strong><br>
+                    {{ result.error_message }}
+                </div>
+            </div>
+        {% elif result.type == 'DML' %}
+            <div class="p-4">
+                <div class="alert alert-success mb-0">
+                    <i class="fa-solid fa-check me-2"></i> DDL/DML Statement Executed Successfully. Rows affected: <strong>{{ result.row_count }}</strong>.
+                </div>
+            </div>
+        {% elif result.columns and result.rows %}
+            <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                <table class="table table-striped table-hover align-middle mb-0" id="resultsTable">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            {% for col in result.columns %}
+                            <th>{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in result.rows %}
+                        <tr>
+                            {% for val in row %}
+                            <td>
+                                {% if val is none %}
+                                    <span class="badge bg-secondary-subtle text-secondary small">NULL</span>
+                                {% else %}
+                                    {{ val }}
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="p-4 text-center text-muted">
+                Query executed successfully. 0 rows returned.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function loadSampleQuery(query) {
+        document.getElementById('sqlQueryInput').value = query;
+        document.getElementById('sqlForm').submit();
+    }
+
+    function clearEditor() {
+        document.getElementById('sqlQueryInput').value = '';
+        document.getElementById('sqlQueryInput').focus();
+    }
+
+    function exportTableToCSV(filename) {
+        const table = document.getElementById("resultsTable");
+        if (!table) return;
+        let csv = [];
+        for (let i = 0; i < table.rows.length; i++) {
+            let row = [], cols = table.rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++) {
+                row.push('"' + cols[j].innerText.replace(/"/g, '""').trim() + '"');
+            }
+            csv.push(row.join(","));
+        }
+        let csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
+        let downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+</script>
+{% endblock %}

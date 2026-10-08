@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Trigger Audit Trail | DBMS Project{% endblock %}
+{% block header_title %}Database Audit Trail &amp; Data Provenance{% endblock %}
+
+{% block content %}
+<!-- Header Card -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> Trigger-Driven Audit Trail</h5>
+                <p class="text-muted small mb-0">
+                    Demonstrating DBMS <strong>Data Provenance and Security Auditing</strong>. Every insert, price modification, and stock adjustment is automatically captured by database triggers (<code>trg_product_audit_insert</code>, <code>trg_product_audit_update</code>) without requiring manual application logging.
+                </p>
+            </div>
+            <span class="badge bg-primary fs-6 px-3 py-2">
+                <i class="fa-solid fa-database me-1"></i> {{ logs | length }} Audit Events Recorded
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Log Table -->
+<div class="card">
+    <div class="card-header fw-bold">
+        <i class="fa-solid fa-list-check text-secondary me-2"></i> Audit Event History (Table: <code>product_audit_log</code>)
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Log ID</th>
+                    <th>Product</th>
+                    <th>Action Type</th>
+                    <th>Previous State (OLD)</th>
+                    <th>Updated State (NEW)</th>
+                    <th>Actor / Agent</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="font-monospace text-muted">#{{ log.audit_id }}</td>
+                    <td>
+                        {% if log.product_name %}
+                            <a href="{{ url_for('product_detail', product_id=log.product_id) }}" class="fw-semibold text-decoration-none">
+                                {{ log.product_name }}
+                            </a>
+                            <div class="font-monospace text-muted small">{{ log.sku }}</div>
+                        {% else %}
+                            <span class="text-muted font-monospace">Product ID #{{ log.product_id }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.action_type == 'INSERT' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="fa-solid fa-plus me-1"></i> INSERT
+                            </span>
+                        {% elif log.action_type == 'UPDATE_PRICE' %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                <i class="fa-solid fa-coins me-1"></i> PRICE CHANGE
+                            </span>
+                        {% elif log.action_type == 'UPDATE_STOCK' %}
+                            <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                <i class="fa-solid fa-boxes-stacked me-1"></i> STOCK CHANGE
+                            </span>
+                        {% elif log.action_type == 'DELETE' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                <i class="fa-solid fa-trash me-1"></i> DELETE
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border">
+                                <i class="fa-solid fa-pen me-1"></i> {{ log.action_type }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.old_values %}
+                            <code class="small text-secondary">{{ log.old_values }}</code>
+                        {% else %}
+                            <span class="text-muted small">None (New Record)</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.new_values %}
+                            <code class="small text-primary fw-semibold">{{ log.new_values }}</code>
+                        {% else %}
+                            <span class="text-danger small">Deleted</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border font-monospace">{{ log.changed_by }}</span>
+                    </td>
+                    <td class="text-muted small text-nowrap">{{ log.timestamp | datetime_format }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">No audit trail records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

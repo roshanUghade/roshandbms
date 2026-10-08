@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}ER Schema &amp; Data Dictionary | DBMS Project{% endblock %}
+{% block header_title %}Database Schema &amp; Entity-Relationship (ER) Architecture{% endblock %}
+
+{% block content %}
+<!-- Architectural Header -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="fa-solid fa-diagram-project text-warning me-2"></i> Relational Architecture (3NF &amp; BCNF Compliant)</h5>
+                <p class="text-muted small mb-0">
+                    The schema models entities with complete primary key and foreign key constraints, enforcing <strong>Referential Integrity</strong> (<code>RESTRICT</code> &bull; <code>CASCADE</code>) and normalization up to Boyce-Codd Normal Form.
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <span class="badge bg-primary fs-6 px-3 py-2"><i class="fa-solid fa-table me-1"></i> {{ schema.tables | length }} Tables</span>
+                <span class="badge bg-success fs-6 px-3 py-2"><i class="fa-solid fa-bolt me-1"></i> {{ schema.triggers | length }} Triggers</span>
+                <span class="badge bg-info fs-6 px-3 py-2"><i class="fa-solid fa-eye me-1"></i> {{ schema.views | length }} Views</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visual ER Architecture Grid -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">
+        <i class="fa-solid fa-sitemap text-primary me-2"></i> Relational Entities &amp; Schema Mapping
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-4">
+            {% for table_name, meta in schema.tables.items() %}
+            <div class="col-md-6 col-xl-3">
+                <div class="er-table-box h-100">
+                    <div class="er-table-header">
+                        <span><i class="fa-solid fa-table me-1"></i> {{ table_name }}</span>
+                        <span class="badge bg-light text-dark" style="font-size: 0.7rem;">{{ meta.row_count }} rows</span>
+                    </div>
+                    <div class="bg-white">
+                        {% for col in meta.columns %}
+                        <div class="er-column-row">
+                            <div>
+                                {% if col.pk %}
+                                    <span class="badge-pk me-1">PK</span>
+                                {% endif %}
+                                {% for fk in meta.foreign_keys %}
+                                    {% if fk.from_col == col.name %}
+                                        <span class="badge-fk me-1">FK</span>
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="fw-semibold">{{ col.name }}</span>
+                            </div>
+                            <div class="text-muted small font-monospace">
+                                {{ col.type }}
+                                {% if col.notnull %}<span class="text-danger" title="NOT NULL">*</span>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if meta.foreign_keys %}
+                    <div class="p-2 bg-light border-top small" style="font-size: 0.72rem;">
+                        <span class="text-muted fw-bold d-block mb-1">RELATIONSHIPS:</span>
+                        {% for fk in meta.foreign_keys %}
+                        <div class="text-secondary text-truncate">
+                            &bull; <code>{{ fk.from_col }}</code> &rarr; <code>{{ fk.to_table }}({{ fk.to_col }})</code>
+                            <span class="text-muted">[{{ fk.on_delete }}]</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Data Dictionary Table -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">
+        <i class="fa-solid fa-book text-secondary me-2"></i> Comprehensive Data Dictionary
+    </div>
+    <div class="card-body p-0">
+        <div class="accordion" id="schemaAccordion">
+            {% for table_name, meta in schema.tables.items() %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading{{ table_name }}">
+                    <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ table_name }}">
+                        <span class="fw-bold me-2"><i class="fa-solid fa-table me-2 text-primary"></i> {{ table_name }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary me-3">{{ meta.columns | length }} Columns</span>
+                        <span class="badge bg-light text-muted border">{{ meta.row_count }} Records</span>
+                    </button>
+                </h2>
+                <div id="collapse{{ table_name }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" data-bs-parent="#schemaAccordion">
+                    <div class="accordion-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Column Name</th>
+                                        <th>Data Type</th>
+                                        <th>Key Type</th>
+                                        <th>Nullable</th>
+                                        <th>Default Value</th>
+                                        <th>Foreign Key Constraint</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for col in meta.columns %}
+                                    <tr>
+                                        <td class="font-monospace fw-semibold">{{ col.name }}</td>
+                                        <td class="text-muted font-monospace small">{{ col.type }}</td>
+                                        <td>
+                                            {% if col.pk %}
+                                                <span class="badge bg-warning text-dark">Primary Key</span>
+                                            {% else %}
+                                                {% set ns = namespace(is_fk=false) %}
+                                                {% for fk in meta.foreign_keys %}
+                                                    {% if fk.from_col == col.name %}
+                                                        <span class="badge bg-primary">Foreign Key</span>
+                                                        {% set ns.is_fk = true %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if not ns.is_fk %}<span class="text-muted small">-</span>{% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if col.notnull %}
+                                                <span class="badge bg-danger-subtle text-danger small">NOT NULL</span>
+                                            {% else %}
+                                                <span class="badge bg-success-subtle text-success small">NULLABLE</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><code class="small">{{ col.dflt_value if col.dflt_value is not none else 'None' }}</code></td>
+                                        <td>
+                                            {% for fk in meta.foreign_keys %}
+                                                {% if fk.from_col == col.name %}
+                                                    <span class="font-monospace small text-primary">
+                                                        &rarr; {{ fk.to_table }}({{ fk.to_col }}) [ON DELETE {{ fk.on_delete }}]
+                                                    </span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Database Triggers & Views Details -->
+<div class="row g-4">
+    <!-- Active Database Triggers -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-bolt text-warning me-2"></i> Active Database Triggers ({{ schema.triggers | length }})</span>
+                <span class="badge bg-light text-dark border">Automated DBMS Logic</span>
+            </div>
+            <div class="card-body p-0" style="max-height: 480px; overflow-y: auto;">
+                <div class="accordion" id="triggersAccordion">
+                    {% for trg in schema.triggers %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="trgHead{{ loop.index }}">
+                            <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#trgCol{{ loop.index }}">
+                                <div class="w-100 d-flex justify-content-between align-items-center pe-3">
+                                    <span class="font-monospace small fw-bold text-dark">{{ trg.name }}</span>
+                                    <span class="badge bg-secondary-subtle text-secondary small">Table: {{ trg.table }}</span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="trgCol{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#triggersAccordion">
+                            <div class="accordion-body p-2 bg-dark">
+                                <pre class="text-info font-monospace small mb-0 p-2" style="white-space: pre-wrap;">{{ trg.sql }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Database Views -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-eye text-info me-2"></i> Analytical Views ({{ schema.views | length }})</span>
+                <span class="badge bg-light text-dark border">Virtual Relations</span>
+            </div>
+            <div class="card-body p-0" style="max-height: 480px; overflow-y: auto;">
+                <div class="accordion" id="viewsAccordion">
+                    {% for view in schema.views %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="viewHead{{ loop.index }}">
+                            <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#viewCol{{ loop.index }}">
+                                <span class="font-monospace small fw-bold text-dark">{{ view.name }}</span>
+                            </button>
+                        </h2>
+                        <div id="viewCol{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#viewsAccordion">
+                            <div class="accordion-body p-2 bg-dark">
+                                <pre class="text-success font-monospace small mb-0 p-2" style="white-space: pre-wrap;">{{ view.sql }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

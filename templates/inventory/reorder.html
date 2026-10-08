@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Low Stock Alerts &amp; Reordering | DBMS Project{% endblock %}
+{% block header_title %}Inventory Replenishment &amp; Low Stock Alerts{% endblock %}
+
+{% block content %}
+<!-- Top Alert Banner & Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card border-danger">
+            <div>
+                <div class="stat-label text-danger">Products Needing Reorder</div>
+                <div class="stat-value text-danger">{{ products | length }}</div>
+                <small class="text-muted">Filtered by SQL View <code>v_low_stock_alerts</code></small>
+            </div>
+            <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div>
+                <div class="stat-label">Total Shortfall Units</div>
+                <div class="stat-value text-warning">{{ total_shortfall }} Units</div>
+                <small class="text-muted">Required to restore minimum safety levels</small>
+            </div>
+            <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                <i class="fa-solid fa-boxes-packing"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div>
+                <div class="stat-label">Estimated Procurement Cost</div>
+                <div class="stat-value text-primary">{{ total_estimated_cost | currency }}</div>
+                <small class="text-muted">Calculated using supplier cost price</small>
+            </div>
+            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                <i class="fa-solid fa-money-bill-wave"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Replenishment Recommendations Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <span class="fw-bold"><i class="fa-solid fa-bell text-warning me-2"></i> Low Stock &amp; Out-of-Stock Action Center</span>
+            <small class="text-muted ms-2">Condition: <code>stock_quantity &lt;= reorder_level</code></small>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>SKU &amp; Product Name</th>
+                    <th>Category</th>
+                    <th>Supplier</th>
+                    <th class="text-center">Current Stock</th>
+                    <th class="text-center">Min Threshold</th>
+                    <th class="text-center">Shortfall Units</th>
+                    <th class="text-end">Cost / Unit</th>
+                    <th class="text-end">Est. Reorder Cost</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('product_detail', product_id=p.product_id) }}" class="fw-semibold text-decoration-none">
+                            {{ p.product_name }}
+                        </a>
+                        <div class="font-monospace text-muted small">{{ p.sku }}</div>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">{{ p.category_name }}</span></td>
+                    <td><small class="text-muted">{{ p.supplier_name }}</small></td>
+                    <td class="text-center">
+                        {% if p.stock_quantity == 0 %}
+                            <span class="badge badge-out-of-stock">0 (Out)</span>
+                        {% else %}
+                            <span class="badge badge-low-stock">{{ p.stock_quantity }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center text-muted fw-semibold">{{ p.reorder_level }}</td>
+                    <td class="text-center fw-bold text-danger">+{{ p.units_needed_for_reorder }}</td>
+                    <td class="text-end text-muted">{{ p.cost_price | currency }}</td>
+                    <td class="text-end fw-bold text-primary">
+                        {{ (p.units_needed_for_reorder * p.cost_price) | currency }}
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#reorderModal{{ p.product_id }}">
+                            <i class="fa-solid fa-cart-plus me-1"></i> Quick Restock
+                        </button>
+
+                        <!-- Quick Restock Modal -->
+                        <div class="modal fade text-start" id="reorderModal{{ p.product_id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h6 class="modal-title"><i class="fa-solid fa-boxes-packing text-success me-2"></i> Restock {{ p.product_name }}</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('stock_movement') }}" method="POST">
+                                        <input type="hidden" name="product_id" value="{{ p.product_id }}">
+                                        <input type="hidden" name="action" value="IN">
+                                        <div class="modal-body">
+                                            <p class="small text-muted mb-3">Supplier: <strong>{{ p.supplier_name }}</strong> &bull; Current Stock: <strong>{{ p.stock_quantity }}</strong></p>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Quantity to Add (Recommended: {{ p.units_needed_for_reorder }})</label>
+                                                <input type="number" min="1" name="quantity" class="form-control" value="{{ p.units_needed_for_reorder }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">PO Reference Note</label>
+                                                <input type="text" name="note" class="form-control" value="Restock Order via Low Stock Alert">
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-success">Confirm Restock</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-success py-5">
+                        <i class="fa-solid fa-circle-check fs-2 mb-2 d-block"></i>
+                        Excellent! All inventory products are currently above their reorder thresholds.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
